@@ -151,3 +151,117 @@ resource "aws_security_group" "private-SG" {
     Name : "${var.env}-Pri_SG"
   }
 }
+resource "aws_launch_template" "web-servers-template" {
+  name = "web-servers-template"
+
+  block_device_mappings {
+    device_name = "/dev/sda1"
+
+    ebs {
+      volume_size = 8
+    }
+  }
+
+  capacity_reservation_specification {
+    capacity_reservation_preference = "open"
+  }
+
+  cpu_options {
+    core_count       = 1
+    threads_per_core = 1
+  }
+
+  credit_specification {
+    cpu_credits = "standard"
+  }
+
+  disable_api_termination = true
+
+  ebs_optimized = true
+
+  elastic_gpu_specifications {
+    type = "test"
+  }
+
+  elastic_inference_accelerator {
+    type = "eia1.micro"
+  }
+
+  iam_instance_profile {
+    name = "test"
+  }
+
+  image_id = "ami-test"
+
+
+  instance_market_options {
+    market_type = "spot"
+  }
+
+  instance_type = "t2.micro"
+
+  kernel_id = "test"
+
+  key_name = "test"
+
+  license_specification {
+    license_configuration_arn = "arn:aws:license-manager:eu-west-1:123456789012:license-configuration:lic-0123456789abcdef0123456789abcdef"
+  }
+
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 1
+    instance_metadata_tags      = "enabled"
+  }
+
+  monitoring {
+    enabled = true
+  }
+
+  network_interfaces {
+    associate_public_ip_address = true
+  }
+
+  placement {
+    availability_zone = "us-east-1a"
+  }
+
+  ram_disk_id = "test"
+
+  vpc_security_group_ids = [aws_security_group.public-SG.id]
+
+  tag_specifications {
+    resource_type = "instance"
+
+    tags = {
+      Name = "${var.env}-test"
+    }
+  }
+
+  user_data = filebase64("${path.module}/example.sh")
+}
+resource "aws_autoscaling_group" "Ansible-auto-scaling" {
+  availability_zones = ["us-east-1a"]
+  desired_capacity   = 1
+  max_size           = 1
+  min_size           = 1
+
+  mixed_instances_policy {
+    launch_template {
+      launch_template_specification {
+        launch_template_id = aws_launch_template.web-servers-template.id
+      }
+
+      override {
+        instance_type     = "t2.micro"
+        weighted_capacity = "3"
+      }
+
+      override {
+        instance_type     = "t2.micro"
+        weighted_capacity = "2"
+      }
+    }
+  }
+}
